@@ -6,7 +6,7 @@
 
 import { IpcMainInvokeEvent } from "electron";
 
-import RVCModelManager, { IRVCProcessorOptions } from "./RVCProcessor";
+// import RVCModelManager, { IRVCProcessorOptions } from "./RVCProcessor";
 
 
 interface IVoiceFilter {
@@ -33,11 +33,11 @@ interface IDownloadResponse {
     response: Response | null;
 }
 
-interface IProcessAudioWithRVC {
-    rvcModelManager: RVCModelManager;
-    audioStream: ReadableStream;
-    outputStream: WritableStream;
-}
+// interface IProcessAudioWithRVC {
+//     rvcModelManager: RVCModelManager;
+//     audioStream: ReadableStream;
+//     outputStream: WritableStream;
+// }
 
 const fs = require("fs");
 
@@ -119,17 +119,25 @@ export async function getModelPath(_: IpcMainInvokeEvent, modulePath: string, id
     return fs.existsSync(modelPath + id + ".onnx") ? modelPath + id + ".onnx" : "";
 }
 
-// Todo: includes RVCProcessor
-export async function createRVCProcessor(_: IpcMainInvokeEvent, options: IRVCProcessorOptions): Promise<RVCModelManager> {
-    const rvcModelManager = new RVCModelManager(options);
-    await rvcModelManager.loadModel(options.modelPath);
-    return rvcModelManager;
+export async function readFile(_: IpcMainInvokeEvent, path: string) {
+    return fs.readFileSync(path);
 }
 
-export async function processAudioWithRVC(_: IpcMainInvokeEvent, options: IProcessAudioWithRVC): Promise<void> {
-    await options.rvcModelManager.processStream(options.audioStream, options.outputStream);
+export async function writeFile(_: IpcMainInvokeEvent, path: string, data: string) {
+    return fs.writeFileSync(path, data);
 }
 
-export async function unloadRVCModel(_: IpcMainInvokeEvent, rvcModelManager: RVCModelManager): Promise<void> {
-    await rvcModelManager.cleanup();
-}
+// // Todo: includes RVCProcessor
+// export async function createRVCProcessor(_: IpcMainInvokeEvent, options: IRVCProcessorOptions): Promise<RVCModelManager> {
+//     const rvcModelManager = new RVCModelManager(options);
+//     await rvcModelManager.loadModel(options.modelPath);
+//     return rvcModelManager;
+// }
+
+// export async function processAudioWithRVC(_: IpcMainInvokeEvent, options: IProcessAudioWithRVC): Promise<void> {
+//     await options.rvcModelManager.processStream(options.audioStream, options.outputStream);
+// }
+
+// export async function unloadRVCModel(_: IpcMainInvokeEvent, rvcModelManager: RVCModelManager): Promise<void> {
+//     await rvcModelManager.cleanup();
+// }

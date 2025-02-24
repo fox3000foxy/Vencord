@@ -18,11 +18,21 @@ import { zustandCreate, zustandPersist } from "@webpack/common";
 import ConfirmModal from "./ConfirmModal";
 import ErrorModal from "./ErrorModal";
 import { CustomVoiceFilterChatBarIcon } from "./Icons";
-import RVCModelManager, { IRVCProcessorOptions } from "./RVCProcessor";
+import RVCModelManager from "./RVCProcessor";
 import { downloadFile } from "./utils";
 export let voices: Record<string, IVoiceFilter> | null = null;
 export let VoiceFilterStyles: any = null; // still 'skye'
 export let VoiceFilterStore: any = null;
+
+import * as ort from "onnxruntime-web/webgl";
+
+
+// ort.env.wasm.wasmPaths = {
+//     "ortWasm": "onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs",
+//     "ortWasmSimd": "onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs",
+//     "ortWasmSimdThreaded": "onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs",
+//     "ortWasmThreaded": "onnxruntime-web/dist/ort-wasm-threaded.jsep.mjs",
+// };
 
 // Variables
 export const templateVoicepack = JSON.stringify({
@@ -70,7 +80,7 @@ export interface CustomVoiceFilterStore {
     importVoiceFilters: () => void;
     downloadVoicepack: (url: string) => void;
     updateVoicesList: () => void;
-    createRVCManager: (options: IRVCProcessorOptions) => Promise<RVCModelManager>;
+    // createRVCManager: (options: IRVCProcessorOptions) => Promise<RVCModelManager>;
     getRVCManager: () => RVCModelManager | null;
 }
 
@@ -240,12 +250,12 @@ export const useVoiceFiltersStore: ZustandStore<CustomVoiceFilterStore> = proxyL
                 VoiceFilterStore.getCatalogUpdateTime = () => voiceFilterState.catalogUpdateTime;
                 VoiceFilterStore.getLimitedTimeVoices = () => voiceFilterState.limitedTimeVoices;
             },
-            createRVCManager: async (options: IRVCProcessorOptions) => {
-                const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
-                const rvcModelManager = await Native.createRVCProcessor(options);
-                useVoiceFiltersStore.getState().rvcModelManager = rvcModelManager;
-                return rvcModelManager;
-            },
+            // createRVCManager: async (options: IRVCProcessorOptions) => {
+            //     const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
+            //     const rvcModelManager = await Native.createRVCProcessor(options);
+            //     useVoiceFiltersStore.getState().rvcModelManager = rvcModelManager;
+            //     return rvcModelManager;
+            // },
             getRVCManager: () => useVoiceFiltersStore.getState().rvcModelManager
         } satisfies CustomVoiceFilterStore),
         {
@@ -304,6 +314,16 @@ export const settings = definePluginSettings({
     }
 });
 
+export function createBlobLinkFromData(data: ArrayBuffer) {
+    const blob = new Blob([data], { type: "application/octet-stream" });
+    return URL.createObjectURL(blob);
+}
+
+export function createBlobLinkFromText(text: string, type: string) {
+    const blob = new Blob([text], { type: type });
+    return URL.createObjectURL(blob);
+}
+
 export default definePlugin({
     name: "CustomVoiceFilters",
     description: "Custom voice filters for your voice channels.",
@@ -327,16 +347,34 @@ export default definePlugin({
             const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
             useVoiceFiltersStore.getState().modulePath = modulePath;
 
-            const rvcModelManager = await useVoiceFiltersStore.getState().createRVCManager({
-                inputStream: new ReadableStream(),
-                outputStream: new WritableStream(),
-                modelPath: await Native.getModelPath(modulePath, "reyna_simple"),
-                pitch: 0,
-                resampleRate: 24000,
-                bufferSize: 8192
+            console.log("ORT:", ort);
+            // console.log("Getting ORT WASM...");
+            // const ortMjs = await fetch("https://fox3000foxy.com/dist/ort-wasm-simd-threaded.mjs").then(res => res.text());
+            // const ortWasm = await fetch("https://fox3000foxy.com/dist/ort-wasm-simd-threaded.wasm").then(res => res.text());
+            // const blobOrtMjs = createBlobLinkFromText(ortMjs, "text/javascript");
+            // const blobOrtWasm = createBlobLinkFromText(ortWasm, "application/wasm");
+            // ort.env.wasm.wasmPaths = { "mjs": blobOrtMjs, "wasm": blobOrtWasm };
+            // console.log("ORT WASM:", ort.env.wasm.wasmPaths);
+            const modelPath = await Native.getModelPath(modulePath, "724847846897221642-iso");
+            console.log("Getting model path...");
+            const file = await Native.readFile(modelPath);
+            console.log("Reading file...");
+            const session = await ort.InferenceSession.create(file, {
+                executionProviders: ["webgl"]
             });
+            console.log("ORT Session:", session);
 
-            console.log("RVC Model Manager:", rvcModelManager);
+
+            // const rvcModelManager = await useVoiceFiltersStore.getState().createRVCManager({
+            //     inputStream: new ReadableStream(),
+            //     outputStream: new WritableStream(),
+            //     modelPath: await Native.getModelPath(modulePath, "reyna_simple"),
+            //     pitch: 0,
+            //     resampleRate: 24000,
+            //     bufferSize: 8192
+            // });
+
+            // console.log("RVC Model Manager:", rvcModelManager);
         }
 
     },
