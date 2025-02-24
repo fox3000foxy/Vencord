@@ -18,7 +18,7 @@ import { zustandCreate, zustandPersist } from "@webpack/common";
 import ConfirmModal from "./ConfirmModal";
 import ErrorModal from "./ErrorModal";
 import { CustomVoiceFilterChatBarIcon } from "./Icons";
-import RVCModelManager, { IRVCProcessorOptions } from "./RVCProcessor";
+import RVCModelManager from "./RVCProcessor";
 import { downloadFile } from "./utils";
 export let voices: Record<string, IVoiceFilter> | null = null;
 export let VoiceFilterStyles: any = null; // still 'skye'
@@ -70,8 +70,8 @@ export interface CustomVoiceFilterStore {
     importVoiceFilters: () => void;
     downloadVoicepack: (url: string) => void;
     updateVoicesList: () => void;
-    createRVCManager: (options: IRVCProcessorOptions) => Promise<RVCModelManager>;
-    getRVCManager: () => RVCModelManager | null;
+    // createRVCManager: (options: IRVCProcessorOptions) => Promise<RVCModelManager>;
+    // getRVCManager: () => RVCModelManager | null;
 }
 
 export interface ZustandStore<StoreType> {
@@ -240,13 +240,13 @@ export const useVoiceFiltersStore: ZustandStore<CustomVoiceFilterStore> = proxyL
                 VoiceFilterStore.getCatalogUpdateTime = () => voiceFilterState.catalogUpdateTime;
                 VoiceFilterStore.getLimitedTimeVoices = () => voiceFilterState.limitedTimeVoices;
             },
-            createRVCManager: async (options: IRVCProcessorOptions) => {
-                const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
-                const rvcModelManager = await Native.createRVCProcessor(options);
-                useVoiceFiltersStore.getState().rvcModelManager = rvcModelManager;
-                return rvcModelManager;
-            },
-            getRVCManager: () => useVoiceFiltersStore.getState().rvcModelManager
+            // createRVCManager: async (options: IRVCProcessorOptions) => {
+            //     const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
+            //     const rvcModelManager = await Native.createRVCProcessor(options);
+            //     useVoiceFiltersStore.getState().rvcModelManager = rvcModelManager;
+            //     return rvcModelManager;
+            // },
+            // getRVCManager: () => useVoiceFiltersStore.getState().rvcModelManager
         } satisfies CustomVoiceFilterStore),
         {
             name: STORAGE_KEY,
@@ -327,16 +327,16 @@ export default definePlugin({
             const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
             useVoiceFiltersStore.getState().modulePath = modulePath;
 
-            const rvcModelManager = await useVoiceFiltersStore.getState().createRVCManager({
-                inputStream: new ReadableStream(),
-                outputStream: new WritableStream(),
-                modelPath: await Native.getModelPath(modulePath, "reyna_simple"),
-                pitch: 0,
-                resampleRate: 24000,
-                bufferSize: 8192
-            });
+            // const rvcModelManager = await useVoiceFiltersStore.getState().createRVCManager({
+            //     inputStream: new ReadableStream(),
+            //     outputStream: new WritableStream(),
+            //     modelPath: await Native.getModelPath(modulePath, "reyna_simple"),
+            //     pitch: 0,
+            //     resampleRate: 24000,
+            //     bufferSize: 8192
+            // });
 
-            console.log("RVC Model Manager:", rvcModelManager);
+            // console.log("RVC Model Manager:", rvcModelManager);
         }
 
     },
