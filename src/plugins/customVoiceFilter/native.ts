@@ -6,6 +6,9 @@
 
 import { IpcMainInvokeEvent } from "electron";
 
+import RVCModelManager, { IRVCProcessorOptions } from "./RVCProcessor";
+
+
 interface IVoiceFilter {
     name: string;
     author: string;
@@ -28,6 +31,12 @@ interface IDownloadResponse {
     voiceFilter: IVoiceFilter;
     path: string | null;
     response: Response | null;
+}
+
+interface IProcessAudioWithRVC {
+    rvcModelManager: RVCModelManager;
+    audioStream: ReadableStream;
+    outputStream: WritableStream;
 }
 
 const fs = require("fs");
@@ -98,4 +107,29 @@ export async function deleteAllModels(_: IpcMainInvokeEvent, modulePath: string)
 export async function openFolder(_: IpcMainInvokeEvent, modulePath: string) {
     const process = require("child_process");
     process.exec(`start "" "${modulePath}/discord_voice_filters/"`);
+}
+
+export async function getModelsList(_: IpcMainInvokeEvent, modulePath: string) {
+    const modelPath = modulePath + "/discord_voice_filters/";
+    return fs.readdirSync(modelPath).map(file => file.replace(".onnx", ""));
+}
+
+export async function getModelPath(_: IpcMainInvokeEvent, modulePath: string, id: string) {
+    const modelPath = modulePath + "/discord_voice_filters/";
+    return fs.existsSync(modelPath + id + ".onnx") ? modelPath + id + ".onnx" : "";
+}
+
+// Todo: includes RVCProcessor
+export async function createRVCProcessor(_: IpcMainInvokeEvent, options: IRVCProcessorOptions): Promise<RVCModelManager> {
+    const rvcModelManager = new RVCModelManager(options);
+    await rvcModelManager.loadModel(options.modelPath);
+    return rvcModelManager;
+}
+
+export async function processAudioWithRVC(_: IpcMainInvokeEvent, options: IProcessAudioWithRVC): Promise<void> {
+    await options.rvcModelManager.processStream(options.audioStream, options.outputStream);
+}
+
+export async function unloadRVCModel(_: IpcMainInvokeEvent, rvcModelManager: RVCModelManager): Promise<void> {
+    await rvcModelManager.cleanup();
 }

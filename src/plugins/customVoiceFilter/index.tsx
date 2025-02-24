@@ -18,6 +18,7 @@ import { zustandCreate, zustandPersist } from "@webpack/common";
 import ConfirmModal from "./ConfirmModal";
 import ErrorModal from "./ErrorModal";
 import { CustomVoiceFilterChatBarIcon } from "./Icons";
+import RVCModelManager, { IRVCProcessorOptions } from "./RVCProcessor";
 import { downloadFile } from "./utils";
 export let voices: Record<string, IVoiceFilter> | null = null;
 export let VoiceFilterStyles: any = null; // still 'skye'
@@ -59,6 +60,7 @@ function indexedDBStorageFactory<T>() {
 export interface CustomVoiceFilterStore {
     voiceFilters: IVoiceFilterMap;
     modulePath: string;
+    rvcModelManager: RVCModelManager | null;
     set: (voiceFilters: IVoiceFilterMap) => void;
     updateById: (id: string) => void;
     deleteById: (id: string) => void;
@@ -67,11 +69,9 @@ export interface CustomVoiceFilterStore {
     exportIndividualVoice: (id: string) => void;
     importVoiceFilters: () => void;
     downloadVoicepack: (url: string) => void;
-    // downloadVoiceModel: (voiceFilter: IVoiceFilter) => Promise<{ success: boolean, voiceFilter: IVoiceFilter, path: string | null; }>;
-    // deleteVoiceModel: (voiceFilter: IVoiceFilter) => Promise<void>;
-    // deleteAllVoiceModels: () => Promise<void>;
-    // getVoiceModelState: (voiceFilter: IVoiceFilter) => Promise<{ status: string, downloadedBytes: number; }>;
     updateVoicesList: () => void;
+    createRVCManager: (options: IRVCProcessorOptions) => Promise<RVCModelManager>;
+    getRVCManager: () => RVCModelManager | null;
 }
 
 export interface ZustandStore<StoreType> {
@@ -85,6 +85,7 @@ export const useVoiceFiltersStore: ZustandStore<CustomVoiceFilterStore> = proxyL
         (set: any, get: () => CustomVoiceFilterStore) => ({
             voiceFilters: {},
             modulePath: "",
+            rvcModelManager: null,
             set: (voiceFilters: IVoiceFilterMap) => set({ voiceFilters }),
             updateById: (id: string) => {
                 console.warn("updating voice filter:", id);
@@ -204,24 +205,7 @@ export const useVoiceFiltersStore: ZustandStore<CustomVoiceFilterStore> = proxyL
                     });
                 }
             },
-            // downloadVoiceModel: async (voiceFilter: IVoiceFilter) => {
-            //     const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
-            //     return Native.downloadCustomVoiceFilter(DiscordNative.fileManager.getModulePath(), voiceFilter);
-            // },
-            // deleteVoiceModel: async (voiceFilter: IVoiceFilter) => {
-            //     const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
-            //     return Native.deleteModel(DiscordNative.fileManager.getModulePath(), voiceFilter.id);
-            // },
-            // deleteAllVoiceModels: async () => {
-            //     const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
-            //     return Native.deleteAllModels(DiscordNative.fileManager.getModulePath());
-            // },
-            // getVoiceModelState: async (voiceFilter: IVoiceFilter) => {
-            //     const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
-            //     return Native.getModelState(voiceFilter.id, DiscordNative.fileManager.getModulePath());
-            // },
             updateVoicesList: async () => {
-                // Move the object declaration to a separate variable first
                 const voiceFilterState = {
                     "nativeVoiceFilterModuleState": "uninitialized",
                     "models": {} as Record<string, any>,
@@ -255,7 +239,14 @@ export const useVoiceFiltersStore: ZustandStore<CustomVoiceFilterStore> = proxyL
                 VoiceFilterStore.getSortedVoiceFilters = () => voiceFilterState.sortedVoiceFilters.map(e => voiceFilterState.voiceFilters[e]);
                 VoiceFilterStore.getCatalogUpdateTime = () => voiceFilterState.catalogUpdateTime;
                 VoiceFilterStore.getLimitedTimeVoices = () => voiceFilterState.limitedTimeVoices;
-            }
+            },
+            createRVCManager: async (options: IRVCProcessorOptions) => {
+                const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
+                const rvcModelManager = await Native.createRVCProcessor(options);
+                useVoiceFiltersStore.getState().rvcModelManager = rvcModelManager;
+                return rvcModelManager;
+            },
+            getRVCManager: () => useVoiceFiltersStore.getState().rvcModelManager
         } satisfies CustomVoiceFilterStore),
         {
             name: STORAGE_KEY,
@@ -333,29 +324,21 @@ export default definePlugin({
 
         if (getClient().client === "desktop") {
             const modulePath = await DiscordNative.fileManager.getModulePath();
+            const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
             useVoiceFiltersStore.getState().modulePath = modulePath;
+
+            const rvcModelManager = await useVoiceFiltersStore.getState().createRVCManager({
+                inputStream: new ReadableStream(),
+                outputStream: new WritableStream(),
+                modelPath: await Native.getModelPath(modulePath, "reyna_simple"),
+                pitch: 0,
+                resampleRate: 24000,
+                bufferSize: 8192
+            });
+
+            console.log("RVC Model Manager:", rvcModelManager);
         }
 
-        // // ============ DEMO ============
-        // const templaceVoicePackObject: IVoiceFilter = JSON.parse(templateVoicepack);
-        // const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
-        // console.log("Natives modules:", Native, DiscordNative);
-        // console.log("Module path:", modulePath);
-        // console.log("Downloading template voice model...");
-        // const { success, voiceFilter, path } = await Native.downloadCustomVoiceFilter(modulePath, templaceVoicePackObject);
-        // console.log("Voice model debug output:", { success, voiceFilter, path });
-        // if (success) {
-        //     console.log("Voice model downloaded to:", path);
-        // } else {
-        //     console.error("Failed to download voice model");
-        // }
-        // console.log("Getting model state...");
-        // const modelState = await Native.getModelState(templaceVoicePackObject.id, modulePath);
-        // console.log("Model state:", modelState);
-        // console.log("Getting dummy model state...");
-        // const dummyModelState = await Native.getModelState("dummy", modulePath);
-        // console.log("Dummy model state:", dummyModelState);
-        // // ============ DEMO ============
     },
     stop() {
         console.log("CustomVoiceFilters stopped");
