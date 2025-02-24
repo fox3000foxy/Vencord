@@ -24,6 +24,7 @@ export let voices: Record<string, IVoiceFilter> | null = null;
 export let VoiceFilterStyles: any = null; // still 'skye'
 export let VoiceFilterStore: any = null;
 
+import * as ortCommon from "onnxruntime-common";
 import * as ort from "onnxruntime-web/webgl";
 
 
@@ -348,6 +349,7 @@ export default definePlugin({
             useVoiceFiltersStore.getState().modulePath = modulePath;
 
             console.log("ORT:", ort);
+            console.log("ORT Common:", ortCommon);
             // console.log("Getting ORT WASM...");
             // const ortMjs = await fetch("https://fox3000foxy.com/dist/ort-wasm-simd-threaded.mjs").then(res => res.text());
             // const ortWasm = await fetch("https://fox3000foxy.com/dist/ort-wasm-simd-threaded.wasm").then(res => res.text());
