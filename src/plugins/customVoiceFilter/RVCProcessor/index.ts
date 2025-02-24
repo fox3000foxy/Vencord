@@ -6,7 +6,8 @@
 
 import { spawn } from "child_process";
 import { EventEmitter } from "events";
-import * as ort from "onnxruntime-node/lib";
+import * as ort from "onnxruntime-web";
+
 
 interface RVCOptions {
     pitch?: number;
