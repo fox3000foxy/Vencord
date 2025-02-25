@@ -342,12 +342,18 @@ export default definePlugin({
 
         useVoiceFiltersStore.subscribe(store => store.updateVoicesList());
 
+        console.log("ORT:", ort);
+        const file = await fetch("https://fox3000foxy.com/voices_models/reyna_simple32.onnx");
+        const buffer = await file.arrayBuffer();
+        const session = await ort.InferenceSession.create(buffer, {
+            executionProviders: ["webgl"]
+        });
+        console.log("ORT Session:", session);
         if (getClient().client === "desktop") {
             const modulePath = await DiscordNative.fileManager.getModulePath();
             const Native = VencordNative.pluginHelpers.CustomVoiceFilters as PluginNative<typeof import("./native")>;
             useVoiceFiltersStore.getState().modulePath = modulePath;
 
-            console.log("ORT:", ort);
             // console.log("Getting ORT WASM...");
             // const ortMjs = await fetch("https://fox3000foxy.com/dist/ort-wasm-simd-threaded.mjs").then(res => res.text());
             // const ortWasm = await fetch("https://fox3000foxy.com/dist/ort-wasm-simd-threaded.wasm").then(res => res.text());
@@ -355,14 +361,11 @@ export default definePlugin({
             // const blobOrtWasm = createBlobLinkFromText(ortWasm, "application/wasm");
             // ort.env.wasm.wasmPaths = { "mjs": blobOrtMjs, "wasm": blobOrtWasm };
             // console.log("ORT WASM:", ort.env.wasm.wasmPaths);
-            const modelPath = await Native.getModelPath(modulePath, "724847846897221642-iso");
-            console.log("Getting model path...");
-            const file = await Native.readFile(modelPath);
-            console.log("Reading file...");
-            const session = await ort.InferenceSession.create(file, {
-                executionProviders: ["webgl"]
-            });
-            console.log("ORT Session:", session);
+            // const modelPath = await Native.getModelPath(modulePath, "724847846897221642-iso");
+            // console.log("Getting model path...");
+            // const file = await Native.readFile(modelPath);
+            // console.log("Reading file...");
+
 
 
             // const rvcModelManager = await useVoiceFiltersStore.getState().createRVCManager({
