@@ -18,6 +18,7 @@
 
 import ErrorBoundary from "@components/ErrorBoundary";
 import BadgeAPIPlugin from "@plugins/_api/badges";
+import { getCustomBadges } from "@plugins/customBadges";
 import { ComponentType, HTMLProps } from "react";
 
 export const enum BadgePosition {
@@ -103,12 +104,14 @@ export function _getBadges(args: BadgeUserArgs) {
     }
 
     const donorBadges = BadgeAPIPlugin.getDonorBadges(args.userId);
+    const customBadges = getCustomBadges(args.userId);
+    const allBadges = [...donorBadges, ...customBadges];
     if (donorBadges) {
         badges.unshift(
-            ...donorBadges.map(badge => ({
+            ...allBadges.map(badge => ({
                 ...args,
                 ...badge,
-            }))
+            })),
         );
     }
 
