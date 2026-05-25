@@ -26,8 +26,7 @@ const settings = definePluginSettings({
 const normalizeWord = w => w.replace(/0/g, 'o').replace(/1/g, 'i').replace(/l/g, 'i');
 const normalizeMsg = s => s.replace(/0/g, 'o').replace(/1/g, 'i').replace(/l/g, 'i');
 
-const robloxVersion = (e, patterns) => {
-    const content = e.message.content;
+const robloxVersion = (content: string, patterns: RegExp[]) => {
     const norm = normalizeMsg(content);
     const censorPositions = new Set();
 
@@ -46,19 +45,18 @@ const robloxVersion = (e, patterns) => {
     for (let i = 0; i < content.length; i++) {
         result += censorPositions.has(i) ? "#" : content[i];
     }
-    e.message.content = result;
-
+    return result;
 };
 
-const hardVersion = (e, patterns) => {
-    const n = normalizeMsg(e.message.content);
+const hardVersion = (content: string, patterns: RegExp[]) => {
+    const n = normalizeMsg(content);
     for (const re of patterns) {
         if (re.test(n)) {
-            e.message.content = `🔒 Message has been Redacted.
+            return `🔒 Message has been Redacted.
 -# Discord now requires ID verification in order to see certain messages. [Learn More](https://support.discord.com/hc/en-us/articles/18210995019671-Discord-Sensitive-Content-Filters)`;
-            break;
         }
     }
+    return content;
 };
 
 export default definePlugin({
@@ -82,12 +80,41 @@ export default definePlugin({
                     case -1:
                         break;
                     case 1:
-                        return robloxVersion(e, patterns);
+                        e.message.content = robloxVersion(e.message.content, patterns);
+                        break;
                     case 2:
-                        return hardVersion(e, patterns);
+                        e.message.content = hardVersion(e.message.content, patterns);
+                        break;
                 }
             }
+            if (e.type === 'LOAD_MESSAGES_SUCCESS') {
+                e.messages.forEach(message => message.content ? message.content = robloxVersion(message.content, patterns) : null);
+            }
         });
+    },
+
+    async onBeforeMessageSend(_, message) {
+        if (!settings.store.version) return;
+        if (!message.content) return;
+
+        const clean = {};
+        for (const w of banlist) {
+            const n = normalizeWord(w);
+            clean[n] = true;
+        }
+        const cleanWords = Object.keys(clean).sort((a, b) => b.length - a.length);
+        const patterns = cleanWords.map(w => new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '\\w*?'), 'gi'));
+
+        switch (settings.store.version) {
+            case -1:
+                break;
+            case 1:
+                message.content = robloxVersion(message.content, patterns);
+                break;
+            case 2:
+                message.content = hardVersion(message.content, patterns);
+                break;
+        }
     }
 });
 
